@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -c \"import langgraph, langgraph_supervisor, langchain_google_genai, langchain_community, sqlalchemy; print\\('deps present'\\)\")",
+      "Bash(python -m venv .venv)",
+      "Bash(.venv/Scripts/python.exe -m pip install --quiet --upgrade pip)",
+      "Bash(.venv/Scripts/python.exe -m pip install --quiet -r requirements.txt)",
+      "Bash(echo \"---EXIT $?---\")"
+    ]
+  }
+}
