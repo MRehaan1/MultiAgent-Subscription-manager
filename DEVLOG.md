@@ -90,6 +90,29 @@ history — what changed, why, and which files. Newest session on top.
 - **Why:** call tracing will be done later with **Langfuse** instead. The graph
   visualization (`visualize.py`, change #11) is unaffected and stays.
 
+### 13. Documented the full grilling session
+- Added `docs/GRILLING-SESSION.md` recording all 14 design decisions
+  (question / options / decision / rationale / code location), with
+  implementation refinements cross-referenced to this DEVLOG.
+- **Why:** the decisions were scattered across CONTEXT.md, the ADR, and chat;
+  needed one consolidated reference.
+
+### 14. Confirmed BUGFIX A & B at runtime
+- Verified with the demo: a single combined query ("phone + purchase + Rolling
+  Stones albums") now returns both the invoice total ($8.91) AND the albums in
+  one fused answer (Bugfix B), and the interrupt input-capture works (Bugfix A).
+  Preferences round-trip correctly (turn 2 returns Rolling Stones songs).
+
+### 15. Documented the runtime technical journey
+- Added `docs/TECHNICAL-JOURNEY.md`: a code-level walkthrough of the demo
+  (nodes, tools, files, functions, and how each is invoked).
+
+### 16. Documented the LLM request flow
+- Added `docs/LLM-REQUESTS-DEMO.md`: the full sequence of LLM round-trips for the
+  demo (calls A–N), each with request (tools + messages) and response
+  (`tool_call` or `content`), explaining how routing and tool calls are the same
+  primitive.
+
 ### Open / pending
 - Integrate **Langfuse** for call tracing (replaces the reverted logging).
 - Re-test BUGFIX (B): confirm the single combined query now returns both the
