@@ -11,6 +11,7 @@ sensitive runs until customer_id is set (ADR 0001).
 import re
 from typing import Literal
 
+from langchain_core.messages import HumanMessage
 from langgraph.types import interrupt
 from pydantic import BaseModel, Field
 
@@ -107,13 +108,21 @@ def verify_info(state: dict) -> dict:
         return {}
 
     text_to_parse = _latest_user_text(state.get("messages", []))
+    resumed_inputs: list[str] = []
     while True:
         parsed = _extract_identifier(text_to_parse)
         customer_id = _lookup_customer_id(parsed)
         if customer_id is not None:
-            return {"customer_id": customer_id}
+            update = {"customer_id": customer_id}
+            # Surface whatever the human typed at the interrupt (it often
+            # contains the actual question, not just credentials) so the
+            # supervisor answers it instead of only seeing the first message.
+            if resumed_inputs:
+                update["messages"] = [HumanMessage(content=t) for t in resumed_inputs]
+            return update
         # HITL: pause and ask the human; their reply resumes here.
         text_to_parse = interrupt(
             "I couldn't verify your identity. Please provide your "
             "customer ID, email, or phone number."
         )
+        resumed_inputs.append(text_to_parse)

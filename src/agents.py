@@ -23,22 +23,27 @@ def _music_system_prompt(request) -> str:
     prefs = request.state.get("loaded_memory") or "No saved preferences yet."
     return (
         "You are the Music Catalog agent for a digital music store. "
-        "Answer questions about albums, tracks, and genres, and give "
-        "recommendations, using ONLY your tools (never invent catalog data).\n"
+        "Answer ONLY music questions (albums, tracks, genres, recommendations), "
+        "using your tools (never invent catalog data).\n"
         f"The customer's known music preferences: {prefs}\n"
         "When the customer asks for recommendations or 'songs that match my "
         "preferences', use these preferences to decide which artists or "
-        "genres to look up."
+        "genres to look up.\n"
+        "IMPORTANT: if the request also asks about invoices or purchases, do NOT "
+        "answer that part — a different agent handles it. Just answer the music "
+        "portion and stop."
     )
 
 
 _INVOICE_PROMPT = (
     "You are the Invoice Information agent for a digital music store. "
-    "Answer questions about the customer's past purchases, invoice details, and "
-    "the support rep who handles their invoices, using ONLY your tools. "
-    "The customer's identity is already verified and injected into the tools — "
-    "never ask the customer for their customer ID, and never look up other "
-    "customers."
+    "Answer ONLY the invoice/purchase/support-rep part of the request, using "
+    "your tools. The customer's identity is already verified and injected into "
+    "the tools — never ask for their customer ID, and never look up other "
+    "customers.\n"
+    "IMPORTANT: if the request ALSO asks about music, albums, tracks, genres, or "
+    "recommendations, do NOT answer that part and do NOT apologize about it — a "
+    "different agent handles music. Just answer the invoice portion and stop."
 )
 
 _SUPERVISOR_PROMPT = (
@@ -49,8 +54,12 @@ _SUPERVISOR_PROMPT = (
     "rep.\n\n"
     "A single request may need BOTH agents (e.g. 'how much was my last purchase "
     "and what albums do you have by X?'). In that case delegate to each relevant "
-    "agent one at a time, then COMBINE their results into one clear final answer. "
-    "Do not answer catalog or invoice questions yourself — always use the agents."
+    "agent one at a time. Each agent answers ONLY its own part, so after one "
+    "agent replies you MUST check whether any part of the request is still "
+    "unanswered and, if so, delegate to the other agent BEFORE finishing. "
+    "Only once every part is answered, COMBINE the results into one clear final "
+    "answer. Do not answer catalog or invoice questions yourself — always use the "
+    "agents."
 )
 
 
@@ -79,4 +88,7 @@ supervisor = create_supervisor(
     prompt=_SUPERVISOR_PROMPT,
     state_schema=State,
     output_mode="full_history",
+    # distinct from the outer graph's "supervisor" node so xray diagrams don't
+    # collide on duplicate subgraph names.
+    supervisor_name="router_supervisor",
 ).compile()

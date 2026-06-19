@@ -8,6 +8,8 @@ Commands:
 
 Human-in-the-loop: when verification interrupts, the bot's question is printed
 and YOU type the credentials live; the graph then resumes.
+
+(Call tracing will be added later via Langfuse.)
 """
 
 import logging
@@ -15,9 +17,7 @@ import logging
 from langgraph.types import Command
 
 # Silence the harmless "wrote to unknown channel remaining_steps, ignoring it"
-# log: the managed RemainingSteps value can't cross the supervisor->outer-graph
-# boundary, but it is required by langgraph-supervisor (see state.py). The graph
-# behaves correctly; we just keep the demo output clean.
+# log (see state.py) — the graph behaves correctly; we just keep output clean.
 logging.getLogger("langgraph").setLevel(logging.ERROR)
 
 from .graph import graph
