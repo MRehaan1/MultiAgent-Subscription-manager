@@ -113,8 +113,41 @@ history — what changed, why, and which files. Newest session on top.
   (`tool_call` or `content`), explaining how routing and tool calls are the same
   primitive.
 
+### 17. Integrated Langfuse tracing (optional)
+- Added `src/tracing.py` (`get_langfuse_handler`, `flush_langfuse`); `main.py`
+  attaches the handler via `config["callbacks"]` on every invoke and flushes on
+  exit. Reads `LANGFUSE_PUBLIC_KEY` / `LANGFUSE_SECRET_KEY` / `LANGFUSE_BASE_URL`
+  (host); disabled cleanly when keys are blank. Added `langfuse` to
+  requirements and the keys to `.env.example` + README.
+- **Why:** call tracing (replaces the reverted ad-hoc logging, change #12).
+- **Verified:** no-keys → handler None (app runs); fake keys → handler builds.
+
+### 18. Applied Langfuse skill best practices
+- Installed the official Langfuse skill (github.com/langfuse/skills) and followed
+  its `instrumentation.md`. Enriched the run config in `main.py`:
+  `run_name="music-support-turn"` (descriptive trace name),
+  `langfuse_session_id = thread_id` (groups a session's turns in the Sessions
+  view), and `langfuse_user_id = customer_id` (per-customer attribution, set once
+  verification has run). Added `_current_customer_id()` to read the verified id
+  from graph state per turn.
+- **Why:** the skill's inference table maps multi-turn → session_id and
+  user-aware → user_id; both fit this app and add filtering/grouping without
+  hiding data.
+- Followed the skill's "Documentation First" rule (confirmed the v4
+  `get_client()` + `CallbackHandler()` + `config["callbacks"]` pattern against
+  current docs).
+
+### 19. Added a visual trace walkthrough
+- Added `docs/trace-walkthrough.html`: a self-contained, observability-style
+  waterfall built from the Langfuse export of the two demo turns. Color-codes
+  each span (verify / router / sub-agent / tool / memory) and shows the real
+  token counts, latencies, tool args, and per-turn cost (~$0.0038 total, 14 LLM
+  calls). Also published as a shareable Artifact.
+- **Why:** an at-a-glance explainer of what happens under the hood, for the demo
+  defense — complements `docs/LLM-REQUESTS-DEMO.md` (the raw request flow).
+
 ### Open / pending
-- Integrate **Langfuse** for call tracing (replaces the reverted logging).
+- _(none)_
 - Re-test BUGFIX (B): confirm the single combined query now returns both the
   invoice total *and* the Stones albums in one fused answer.
 - Runtime validation of the verification-interrupt input-capture (BUGFIX A).

@@ -1,0 +1,438 @@
+<title>Langfuse Trace — Music Store Support</title>
+<style>
+  :root{
+    --ground:#14182A;
+    --panel:#1C2236;
+    --panel-2:#232A42;
+    --line:#2E3656;
+    --text:#E9E7F2;
+    --muted:#9197B5;
+    --faint:#666E92;
+    --accent:#E7A33C;      /* amber  — model reasoning / agents */
+    --accent-2:#54C7BE;    /* teal   — tools / data / memory   */
+    --violet:#9B8CFF;      /* router / supervisor              */
+    --rose:#E98095;        /* invoice sub-agent                */
+    --ok:#7FD89B;
+    --mono: ui-monospace, "SF Mono", "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
+    --sans: ui-sans-serif, system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{ -webkit-text-size-adjust:100%; }
+  body{
+    margin:0; background:
+      radial-gradient(1200px 600px at 80% -10%, rgba(231,163,60,.08), transparent 60%),
+      radial-gradient(900px 500px at -10% 10%, rgba(84,199,190,.06), transparent 55%),
+      var(--ground);
+    color:var(--text); font-family:var(--sans);
+    line-height:1.5; letter-spacing:.01em;
+  }
+  .wrap{max-width:1060px; margin:0 auto; padding:48px 24px 80px;}
+
+  /* ---------- header ---------- */
+  .eyebrow{
+    font-family:var(--mono); font-size:12px; letter-spacing:.28em; text-transform:uppercase;
+    color:var(--accent); margin:0 0 14px;
+  }
+  h1{
+    font-size:clamp(30px,5vw,52px); line-height:1.04; margin:0 0 18px;
+    font-weight:780; letter-spacing:-.02em;
+  }
+  h1 .dim{color:var(--muted); font-weight:600;}
+  .lede{max-width:64ch; color:#C9CCE0; font-size:17px; margin:0 0 34px;}
+
+  .meta{
+    display:flex; flex-wrap:wrap; gap:10px 12px; margin-bottom:8px;
+  }
+  .stat{
+    background:var(--panel); border:1px solid var(--line); border-radius:12px;
+    padding:12px 16px; min-width:120px;
+  }
+  .stat b{display:block; font-family:var(--mono); font-size:22px; font-weight:700; letter-spacing:-.01em;}
+  .stat span{font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:.12em;}
+  .stat.amber b{color:var(--accent);} .stat.teal b{color:var(--accent-2);} .stat.violet b{color:var(--violet);}
+
+  /* ---------- legend ---------- */
+  .legend{display:flex; flex-wrap:wrap; gap:8px 18px; margin:30px 0 8px; padding:14px 16px;
+    background:var(--panel); border:1px solid var(--line); border-radius:12px;}
+  .legend .li{display:flex; align-items:center; gap:8px; font-size:13px; color:#CBCFE6;}
+  .dot{width:10px; height:10px; border-radius:3px; flex:none;}
+
+  /* ---------- act / turn ---------- */
+  .act{margin-top:52px;}
+  .act-head{display:flex; align-items:baseline; gap:14px; flex-wrap:wrap; margin-bottom:6px;}
+  .act-num{font-family:var(--mono); font-size:13px; color:var(--faint); letter-spacing:.2em;}
+  .act h2{font-size:24px; margin:0; font-weight:720; letter-spacing:-.01em;}
+  .act-meta{font-family:var(--mono); font-size:12.5px; color:var(--muted); margin-left:auto;}
+
+  .ask{
+    display:flex; gap:12px; align-items:flex-start;
+    background:linear-gradient(180deg, var(--panel-2), var(--panel));
+    border:1px solid var(--line); border-left:3px solid var(--accent);
+    border-radius:12px; padding:14px 16px; margin:14px 0 8px;
+  }
+  .ask .who{font-family:var(--mono); font-size:11px; color:var(--accent); text-transform:uppercase; letter-spacing:.16em; padding-top:3px; flex:none;}
+  .ask p{margin:0; font-size:15.5px; color:#EDEBF6;}
+
+  .bot{
+    display:flex; gap:12px; align-items:flex-start;
+    background:rgba(84,199,190,.06);
+    border:1px solid var(--line); border-left:3px solid var(--accent-2);
+    border-radius:12px; padding:14px 16px; margin:8px 0 4px;
+  }
+  .bot .who{font-family:var(--mono); font-size:11px; color:var(--accent-2); text-transform:uppercase; letter-spacing:.16em; padding-top:3px; flex:none;}
+  .bot p{margin:0; font-size:14.5px; color:#DDE6E6; white-space:pre-line;}
+
+  /* ---------- waterfall ---------- */
+  .flow{margin-top:18px; border-left:2px solid var(--line); padding-left:0;}
+  .step{position:relative; padding:0 0 0 26px; margin:0 0 10px;}
+  .step::before{ /* node dot on the rail */
+    content:""; position:absolute; left:-7px; top:18px; width:12px; height:12px;
+    border-radius:50%; background:var(--ground); border:2px solid var(--node,var(--muted));
+  }
+  .step.sub{padding-left:54px;}
+  .step.sub::after{ /* connector elbow for nested rows */
+    content:""; position:absolute; left:0; top:24px; width:26px; height:2px; background:var(--line);
+  }
+  .card{
+    background:var(--panel); border:1px solid var(--line); border-radius:12px;
+    border-left:3px solid var(--node,var(--muted));
+    padding:12px 14px; display:grid; grid-template-columns:1fr auto; gap:4px 14px; align-items:start;
+  }
+  .card .head{display:flex; align-items:center; gap:10px; flex-wrap:wrap;}
+  .glyph{font-size:15px; line-height:1; filter:saturate(1.1);}
+  .name{font-family:var(--mono); font-size:13.5px; font-weight:600; color:var(--text);}
+  .tag{font-family:var(--mono); font-size:10.5px; text-transform:uppercase; letter-spacing:.1em;
+    padding:2px 7px; border-radius:999px; border:1px solid var(--node,var(--muted)); color:var(--node,var(--muted));}
+  .desc{grid-column:1 / -1; color:#C4C8DF; font-size:13.5px; margin-top:2px;}
+  .desc code{font-family:var(--mono); font-size:12px; background:var(--panel-2); padding:1px 6px;
+    border-radius:5px; color:#EAE0CB; border:1px solid var(--line);}
+  .desc .teal-c{color:var(--accent-2);}
+  .metric{justify-self:end; text-align:right; font-family:var(--mono); font-size:11.5px; color:var(--muted); white-space:nowrap;}
+  .metric b{color:var(--text); font-weight:600;}
+  .bar{height:4px; border-radius:3px; background:var(--node,var(--muted)); opacity:.5; margin-top:6px;}
+
+  /* span type colors */
+  .verify{--node:var(--accent);}
+  .memory{--node:var(--accent-2);}
+  .router{--node:var(--violet);}
+  .invoice{--node:var(--rose);}
+  .music{--node:var(--accent);}
+  .tool{--node:var(--accent-2);}
+  .skip{--node:var(--faint);} .skip .card{opacity:.72;}
+
+  .out{font-family:var(--mono); font-size:12.5px; color:var(--ok);}
+
+  /* ---------- notice cards ---------- */
+  .notice{display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:14px; margin-top:22px;}
+  .ncard{background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:18px;}
+  .ncard h3{margin:0 0 8px; font-size:15px; letter-spacing:-.01em;}
+  .ncard p{margin:0; font-size:13.5px; color:#C2C6DD;}
+  .ncard code{font-family:var(--mono); font-size:12px; color:#EAE0CB;}
+  .ncard .kk{font-family:var(--mono); font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--accent); display:block; margin-bottom:6px;}
+  .ncard.t .kk{color:var(--accent-2);} .ncard.v .kk{color:var(--violet);}
+
+  /* ---------- cost table ---------- */
+  table{width:100%; border-collapse:collapse; margin-top:14px; font-size:13px;}
+  caption{caption-side:top; text-align:left; font-family:var(--mono); font-size:11px;
+    letter-spacing:.2em; text-transform:uppercase; color:var(--muted); margin-bottom:10px;}
+  th,td{padding:9px 10px; border-bottom:1px solid var(--line); text-align:right;}
+  th:first-child, td:first-child{text-align:left; font-family:var(--mono); font-size:12.5px;}
+  th{color:var(--muted); font-weight:600; font-size:11px; text-transform:uppercase; letter-spacing:.08em;}
+  td.num{font-family:var(--mono);}
+  tr.tot td{border-top:2px solid var(--line); border-bottom:none; font-weight:700; color:var(--text);}
+  tr.tot td.num{color:var(--accent);}
+
+  .sec-label{font-family:var(--mono); font-size:12px; letter-spacing:.24em; text-transform:uppercase;
+    color:var(--faint); margin:60px 0 4px;}
+
+  footer{margin-top:60px; padding-top:20px; border-top:1px solid var(--line);
+    font-family:var(--mono); font-size:11.5px; color:var(--faint); display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px;}
+
+  @media (max-width:560px){
+    .card{grid-template-columns:1fr;} .metric{justify-self:start; text-align:left;}
+    .act-meta{margin-left:0; width:100%;}
+  }
+  @media (prefers-reduced-motion:no-preference){
+    .step{animation:rise .5s cubic-bezier(.2,.7,.2,1) both;}
+    .flow .step:nth-child(2){animation-delay:.04s;}
+    .flow .step:nth-child(3){animation-delay:.08s;}
+    .flow .step:nth-child(4){animation-delay:.12s;}
+    @keyframes rise{from{opacity:0; transform:translateY(7px);} to{opacity:1; transform:none;}}
+  }
+</style>
+
+<div class="wrap">
+
+  <p class="eyebrow">Langfuse&nbsp;·&nbsp;session-1&nbsp;·&nbsp;gemini-3.1-flash-lite</p>
+  <h1>Two questions,<br><span class="dim">fourteen model calls.</span></h1>
+  <p class="lede">
+    This is the same recorded demo, read back from Langfuse. Each user message fans out through a
+    verification gate, memory, a routing supervisor, two sub-agents, and the database — every step
+    is one span below. Amber is the model <em>reasoning</em>; teal is <em>real data</em> (SQL &amp; memory).
+  </p>
+
+  <div class="meta">
+    <div class="stat amber"><b>2</b><span>turns</span></div>
+    <div class="stat amber"><b>14</b><span>LLM calls</span></div>
+    <div class="stat teal"><b>3</b><span>tool calls</span></div>
+    <div class="stat teal"><b>~12.6k</b><span>tokens</span></div>
+    <div class="stat violet"><b>$0.0038</b><span>total cost</span></div>
+    <div class="stat"><b>9.3s</b><span>wall time</span></div>
+  </div>
+
+  <div class="legend" aria-label="span legend">
+    <div class="li"><span class="dot" style="background:var(--accent)"></span>Verify / sub-agent reasoning</div>
+    <div class="li"><span class="dot" style="background:var(--violet)"></span>Supervisor (router)</div>
+    <div class="li"><span class="dot" style="background:var(--rose)"></span>Invoice agent</div>
+    <div class="li"><span class="dot" style="background:var(--accent-2)"></span>Tool / SQL / memory</div>
+    <div class="li"><span class="dot" style="background:var(--faint)"></span>Skipped (no model call)</div>
+  </div>
+
+  <!-- ============ TURN 1 ============ -->
+  <section class="act">
+    <div class="act-head">
+      <span class="act-num">TURN 01</span>
+      <h2>Verify, then answer two things at once</h2>
+      <span class="act-meta">5.9s · 9 LLM calls · $0.0019</span>
+    </div>
+
+    <div class="ask">
+      <span class="who">You</span>
+      <p>My phone number is +55 (12) 3923-5555. How much was my most recent purchase? What albums do you have by the Rolling Stones?</p>
+    </div>
+
+    <div class="flow">
+
+      <div class="step verify">
+        <div class="card">
+          <div class="head"><span class="glyph">🔐</span><span class="name">verify_info</span><span class="tag">gate</span></div>
+          <div class="metric"><b>83→36</b> tok · 972ms<div class="bar" style="width:100%"></div></div>
+          <div class="desc">LLM extracts the identifier → <code>{type: phone, value: +55 (12) 3923-5555}</code>. A digits-only SQL lookup maps it to <span class="teal-c">customer_id&nbsp;=&nbsp;1</span> (Luís Gonçalves). The gate passes — nothing sensitive runs before this.</div>
+        </div>
+      </div>
+
+      <div class="step memory">
+        <div class="card">
+          <div class="head"><span class="glyph">📂</span><span class="name">load_memory</span><span class="tag">memory</span></div>
+          <div class="metric">no LLM · &lt;1ms</div>
+          <div class="desc">Reads the store for customer 1 → <span class="out">"No saved preferences yet."</span> (first time we've met them).</div>
+        </div>
+      </div>
+
+      <div class="step router">
+        <div class="card">
+          <div class="head"><span class="glyph">🧭</span><span class="name">router_supervisor</span><span class="tag">route</span></div>
+          <div class="metric"><b>258→38</b> tok · 583ms<div class="bar" style="width:60%"></div></div>
+          <div class="desc">Sees two intents, delegates the first → <code>transfer_to_invoice_info</code>.</div>
+        </div>
+      </div>
+
+      <div class="step invoice sub">
+        <div class="card">
+          <div class="head"><span class="glyph">🧾</span><span class="name">invoice_info</span><span class="tag">agent</span></div>
+          <div class="metric"><b>433→21</b> tok · 467ms<div class="bar" style="width:48%"></div></div>
+          <div class="desc">Calls <code>get_invoices_by_customer_sorted_by_date()</code> — note the args are <code>{}</code>. The customer id is <strong>injected from verified state</strong>, never chosen by the model.</div>
+        </div>
+      </div>
+
+      <div class="step tool sub">
+        <div class="card">
+          <div class="head"><span class="glyph">🛢️</span><span class="name">get_invoices_by_customer_sorted_by_date</span><span class="tag">sql</span></div>
+          <div class="metric">~2ms</div>
+          <div class="desc">Returns 7 invoices, newest first. Top row → <span class="out">Invoice #382 · 2025-08-07 · $8.91</span>.</div>
+        </div>
+      </div>
+
+      <div class="step invoice sub">
+        <div class="card">
+          <div class="head"><span class="glyph">🧾</span><span class="name">invoice_info</span><span class="tag">answer</span></div>
+          <div class="metric"><b>730→31</b> tok · 601ms<div class="bar" style="width:62%"></div></div>
+          <div class="desc">Replies with the purchase total only — <em>says nothing about music</em>. Lane discipline: it leaves the Stones question for the other agent.</div>
+        </div>
+      </div>
+
+      <div class="step router">
+        <div class="card">
+          <div class="head"><span class="glyph">🧭</span><span class="name">router_supervisor</span><span class="tag">route</span></div>
+          <div class="metric"><b>748→14</b> tok · 512ms<div class="bar" style="width:53%"></div></div>
+          <div class="desc">Music part still unanswered → <code>transfer_to_music_catalog</code>.</div>
+        </div>
+      </div>
+
+      <div class="step music sub">
+        <div class="card">
+          <div class="head"><span class="glyph">🎵</span><span class="name">music_catalog</span><span class="tag">agent</span></div>
+          <div class="metric"><b>898→21</b> tok · 595ms<div class="bar" style="width:61%"></div></div>
+          <div class="desc">Calls <code>get_albums_by_artist({artist: "Rolling Stones"})</code>.</div>
+        </div>
+      </div>
+
+      <div class="step tool sub">
+        <div class="card">
+          <div class="head"><span class="glyph">🛢️</span><span class="name">get_albums_by_artist</span><span class="tag">sql</span></div>
+          <div class="metric">~1ms</div>
+          <div class="desc">Fuzzy <code>LIKE '%Rolling Stones%'</code> matches <strong>The</strong> Rolling Stones → <span class="out">Hot Rocks · No Security · Voodoo Lounge</span>.</div>
+        </div>
+      </div>
+
+      <div class="step music sub">
+        <div class="card">
+          <div class="head"><span class="glyph">🎵</span><span class="name">music_catalog</span><span class="tag">answer</span></div>
+          <div class="metric"><b>986→42</b> tok · 591ms<div class="bar" style="width:61%"></div></div>
+          <div class="desc">Lists the three albums, hands back to the supervisor.</div>
+        </div>
+      </div>
+
+      <div class="step router">
+        <div class="card">
+          <div class="head"><span class="glyph">🧭</span><span class="name">router_supervisor</span><span class="tag">combine</span></div>
+          <div class="metric"><b>1016→76</b> tok · 662ms<div class="bar" style="width:68%"></div></div>
+          <div class="desc">Both parts answered → fuses them into one reply.</div>
+        </div>
+      </div>
+
+      <div class="step memory">
+        <div class="card">
+          <div class="head"><span class="glyph">💾</span><span class="name">create_memory</span><span class="tag">memory</span></div>
+          <div class="metric"><b>532→43</b> tok · 762ms<div class="bar" style="width:78%"></div></div>
+          <div class="desc">Gate opens (a music tool ran). Extracts &amp; saves <code>favorite_artists: ["The Rolling Stones"]</code> for customer 1. The <strong>$8.91 is deliberately not stored</strong> — the prompt excludes financial data.</div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="bot">
+      <span class="who">Bot</span>
+      <p>Your most recent purchase was Invoice #382 on August 7, 2025, for a total of $8.91.
+
+Regarding the Rolling Stones, we have: Hot Rocks (1964–1971, Disc 1), No Security, Voodoo Lounge.</p>
+    </div>
+  </section>
+
+  <!-- ============ TURN 2 ============ -->
+  <section class="act">
+    <div class="act-head">
+      <span class="act-num">TURN 02</span>
+      <h2>Same session — now it remembers</h2>
+      <span class="act-meta">3.4s · 5 LLM calls · $0.0019</span>
+    </div>
+
+    <div class="ask">
+      <span class="who">You</span>
+      <p>List some songs that match my preferences?</p>
+    </div>
+
+    <div class="flow">
+
+      <div class="step skip">
+        <div class="card">
+          <div class="head"><span class="glyph">🔓</span><span class="name">verify_info</span><span class="tag">skipped</span></div>
+          <div class="metric">no LLM</div>
+          <div class="desc"><code>customer_id = 1</code> is already in the session (checkpointer). Verification short-circuits — that's why turn 2 is cheaper.</div>
+        </div>
+      </div>
+
+      <div class="step memory">
+        <div class="card">
+          <div class="head"><span class="glyph">📂</span><span class="name">load_memory</span><span class="tag">memory</span></div>
+          <div class="metric">no LLM · &lt;1ms</div>
+          <div class="desc">Store now returns <span class="out">"Favorite artists: The Rolling Stones"</span> → placed into <code>loaded_memory</code>.</div>
+        </div>
+      </div>
+
+      <div class="step router">
+        <div class="card">
+          <div class="head"><span class="glyph">🧭</span><span class="name">router_supervisor</span><span class="tag">route</span></div>
+          <div class="metric"><b>987→14</b> tok · 744ms<div class="bar" style="width:77%"></div></div>
+          <div class="desc">A recommendation request → <code>transfer_to_music_catalog</code>.</div>
+        </div>
+      </div>
+
+      <div class="step music sub">
+        <div class="card">
+          <div class="head"><span class="glyph">🎵</span><span class="name">music_catalog</span><span class="tag">agent</span></div>
+          <div class="metric"><b>1149→22</b> tok · 523ms<div class="bar" style="width:54%"></div></div>
+          <div class="desc">Its system prompt now carries the saved taste, so "my preferences" resolves to a concrete call: <code>get_tracks_by_artist({artist: "The Rolling Stones"})</code>.</div>
+        </div>
+      </div>
+
+      <div class="step tool sub">
+        <div class="card">
+          <div class="head"><span class="glyph">🛢️</span><span class="name">get_tracks_by_artist</span><span class="tag">sql</span></div>
+          <div class="metric">~3ms</div>
+          <div class="desc">Returns ~40 Rolling Stones tracks (Paint It Black, Satisfaction, Ruby Tuesday, …).</div>
+        </div>
+      </div>
+
+      <div class="step music sub">
+        <div class="card">
+          <div class="head"><span class="glyph">🎵</span><span class="name">music_catalog</span><span class="tag">answer</span></div>
+          <div class="metric"><b>1660→75</b> tok · 726ms<div class="bar" style="width:75%"></div></div>
+          <div class="desc">"Based on your preference for The Rolling Stones…" — picks 9 songs.</div>
+        </div>
+      </div>
+
+      <div class="step router">
+        <div class="card">
+          <div class="head"><span class="glyph">🧭</span><span class="name">router_supervisor</span><span class="tag">combine</span></div>
+          <div class="metric"><b>1711→76</b> tok · 644ms<div class="bar" style="width:67%"></div></div>
+          <div class="desc">Finalizes the personalized song list.</div>
+        </div>
+      </div>
+
+      <div class="step memory">
+        <div class="card">
+          <div class="head"><span class="glyph">💾</span><span class="name">create_memory</span><span class="tag">memory</span></div>
+          <div class="metric"><b>880→43</b> tok · 685ms<div class="bar" style="width:71%"></div></div>
+          <div class="desc">Re-extracts &amp; merges — profile is unchanged (still The Rolling Stones). Idempotent.</div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="bot">
+      <span class="who">Bot</span>
+      <p>Based on your interest in The Rolling Stones, here are some songs from our catalog: 19th Nervous Breakdown · As Tears Go By · Get Off Of My Cloud · Gimmie Shelters · Paint It Black · Ruby Tuesday · Satisfaction · Time Is On My Side · Under My Thumb.</p>
+    </div>
+  </section>
+
+  <!-- ============ WHAT TO NOTICE ============ -->
+  <p class="sec-label">What the trace proves</p>
+  <div class="notice">
+    <div class="ncard">
+      <span class="kk">Security</span>
+      <h3>The id is injected, not chosen</h3>
+      <p>Every invoice tool call shows <code>args: {}</code>. The verified <code>customer_id</code> is filled from state, so the model can't read another customer's data — even if asked.</p>
+    </div>
+    <div class="ncard t">
+      <span class="kk">Memory</span>
+      <h3>Turn 1 writes, turn 2 reads</h3>
+      <p><code>create_memory</code> saved "The Rolling Stones"; next turn <code>load_memory</code> surfaced it, turning a vague "my preferences" into a real lookup.</p>
+    </div>
+    <div class="ncard v">
+      <span class="kk">Routing</span>
+      <h3>One turn, both agents</h3>
+      <p>The supervisor delegated to invoice <em>and</em> music sequentially because each agent answered only its own part — then it merged the two.</p>
+    </div>
+  </div>
+
+  <!-- ============ COST TABLE ============ -->
+  <p class="sec-label">Cost &amp; tokens</p>
+  <table>
+    <caption>Per turn · gemini-3.1-flash-lite-preview · temp 0</caption>
+    <thead>
+      <tr><th>Turn</th><th>LLM calls</th><th>Input tok</th><th>Output tok</th><th>Cost (USD)</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Turn 1 — verify + combined</td><td class="num">9</td><td class="num">5,684</td><td class="num">322</td><td class="num">$0.00190</td></tr>
+      <tr><td>Turn 2 — preferences</td><td class="num">5</td><td class="num">6,387</td><td class="num">230</td><td class="num">$0.00194</td></tr>
+      <tr class="tot"><td>Session total</td><td class="num">14</td><td class="num">12,071</td><td class="num">552</td><td class="num">$0.00384</td></tr>
+    </tbody>
+  </table>
+
+  <footer>
+    <span>traces: 840093d3… · 85c0370a…</span>
+    <span>read from Langfuse export · 80 spans condensed</span>
+  </footer>
+
+</div>

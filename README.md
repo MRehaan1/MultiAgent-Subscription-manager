@@ -14,6 +14,11 @@ cp .env.example .env          # then add your free Gemini API key
 
 Get a free Gemini key at https://aistudio.google.com/apikey.
 
+**Optional — Langfuse tracing:** set `LANGFUSE_PUBLIC_KEY` / `LANGFUSE_SECRET_KEY`
+(and `LANGFUSE_BASE_URL`) in `.env` to trace every LLM/agent/tool call. Leave
+them blank to disable — the app runs either way. `main.py` prints whether
+tracing is ON at startup.
+
 ## Run
 
 ```bash

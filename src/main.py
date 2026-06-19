@@ -21,15 +21,36 @@ from langgraph.types import Command
 logging.getLogger("langgraph").setLevel(logging.ERROR)
 
 from .graph import graph
+from .tracing import flush_langfuse, get_langfuse_handler
 
 RECURSION_LIMIT = 50  # grill #9: comfortably above the ~22-step worst-case turn
 
+_LANGFUSE = get_langfuse_handler()  # None if keys are not set
 
-def _config(thread_id: str) -> dict:
-    return {
+
+def _config(thread_id: str, customer_id: str | None = None) -> dict:
+    cfg = {
         "configurable": {"thread_id": thread_id},
         "recursion_limit": RECURSION_LIMIT,
     }
+    if _LANGFUSE is not None:
+        cfg["callbacks"] = [_LANGFUSE]
+        # Langfuse best practices (instrumentation.md): a descriptive trace name,
+        # session grouping, and per-customer attribution.
+        cfg["run_name"] = "music-support-turn"
+        meta = {"langfuse_session_id": thread_id}
+        if customer_id:
+            meta["langfuse_user_id"] = customer_id
+        cfg["metadata"] = meta
+    return cfg
+
+
+def _current_customer_id(thread_id: str) -> str | None:
+    """The verified customer for this session, if verification already happened."""
+    try:
+        return graph.get_state({"configurable": {"thread_id": thread_id}}).values.get("customer_id")
+    except Exception:
+        return None
 
 
 def _last_text(result: dict) -> str:
@@ -58,9 +79,10 @@ def _run(invoke_input, config: dict) -> dict:
 
 
 def main():
-    print("Music Store Customer Support  (type :new for a fresh session, :quit to exit)\n")
+    print("Music Store Customer Support  (type :new for a fresh session, :quit to exit)")
+    print(f"Langfuse tracing: {'ON' if _LANGFUSE is not None else 'off (no keys set)'}\n")
     session = 1
-    config = _config(f"session-{session}")
+    thread_id = f"session-{session}"
 
     while True:
         try:
@@ -76,12 +98,16 @@ def main():
             break
         if user == ":new":
             session += 1
-            config = _config(f"session-{session}")
-            print(f"\n--- Started new session-{session} (no prior verification/memory) ---\n")
+            thread_id = f"session-{session}"
+            print(f"\n--- Started new {thread_id} (no prior verification/memory) ---\n")
             continue
 
+        # Per-turn config so the trace carries the (now-known) verified customer.
+        config = _config(thread_id, _current_customer_id(thread_id))
         result = _run({"messages": [{"role": "user", "content": user}]}, config)
         print(f"\nBot: {_last_text(result)}\n")
+
+    flush_langfuse()  # ensure batched traces are sent before exit
 
 
 if __name__ == "__main__":
