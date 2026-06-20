@@ -121,8 +121,17 @@ def verify_info(state: dict) -> dict:
                 update["messages"] = [HumanMessage(content=t) for t in resumed_inputs]
             return update
         # HITL: pause and ask the human; their reply resumes here.
-        text_to_parse = interrupt(
-            "I couldn't verify your identity. Please provide your "
-            "customer ID, email, or phone number."
-        )
+        # First contact gets a greeting; only retries say "couldn't verify".
+        if not resumed_inputs:
+            prompt = (
+                "Hi! Welcome to Music Store support. Before I can help, I need to "
+                "verify your account — please share your customer ID, email, or "
+                "phone number."
+            )
+        else:
+            prompt = (
+                "I couldn't verify your identity. Please provide your "
+                "customer ID, email, or phone number."
+            )
+        text_to_parse = interrupt(prompt)
         resumed_inputs.append(text_to_parse)

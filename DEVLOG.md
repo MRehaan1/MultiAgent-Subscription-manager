@@ -7,6 +7,21 @@ history — what changed, why, and which files. Newest session on top.
 
 ---
 
+## 2026-06-20 — Session 2: Verification UX
+
+### 20. Greeting on first verification prompt
+- `verify_info` now branches the `interrupt()` message: first contact gets a
+  warm greeting ("Hi! Welcome to Music Store support… verify your account…"),
+  and only **retries** use the firmer "I couldn't verify your identity" wording.
+  Uses the existing `resumed_inputs` (empty = first ask) to tell them apart.
+- **Why:** an unverified user typing "hi" previously saw the blunt "I couldn't
+  verify your identity" before they'd supplied anything — it read as an error.
+  The greeting makes first contact welcoming and reserves the failure wording
+  for actual failed attempts. (No LLM call produces this string; it's a literal
+  returned by the `verify_info` interrupt, before the supervisor is reached.)
+
+---
+
 ## 2026-06-18 — Session 1: Scaffold → working multi-agent system
 
 ### 1. Initial scaffold (the 14 locked grill decisions)

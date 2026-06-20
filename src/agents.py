@@ -86,6 +86,7 @@ supervisor = create_supervisor(
     agents=[music_agent, invoice_agent],
     model=model,
     prompt=_SUPERVISOR_PROMPT,
+    parallel_tool_calls=True,
     state_schema=State,
     output_mode="full_history",
     # distinct from the outer graph's "supervisor" node so xray diagrams don't
